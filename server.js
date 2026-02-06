@@ -84,6 +84,39 @@ const followUps = {
     "Great to hear! What stands out as working well?"
 };
 
+const knowledgeBase = [
+  {
+    id: "support",
+    tags: ["support", "agent", "help", "ticket", "response", "resolution"],
+    text:
+      "Support quality is often driven by response time, clarity, and follow-through. We look for trends in those areas."
+  },
+  {
+    id: "value",
+    tags: ["value", "price", "cost", "billing", "plan", "pricing"],
+    text:
+      "Value feedback helps prioritize features and pricing tiers. Examples of value gaps are especially useful."
+  },
+  {
+    id: "product",
+    tags: ["feature", "product", "service", "experience", "quality"],
+    text:
+      "Specific feature mentions help us map feedback to the product roadmap and improve the experience."
+  },
+  {
+    id: "updates",
+    tags: ["email", "sms", "in-app", "updates", "notifications", "channel"],
+    text:
+      "Communication preferences guide where we send updates and which channels we prioritize."
+  },
+  {
+    id: "recommend",
+    tags: ["recommend", "nps", "loyal", "advocate", "referral"],
+    text:
+      "Recommendation likelihood helps us identify champions and spot friction points in the journey."
+  }
+];
+
 function getQuestionnaire() {
   const json = zlib.gunzipSync(compressedQuestionnaire).toString("utf8");
   return JSON.parse(json);
@@ -101,7 +134,8 @@ function createSession() {
     createdAt: Date.now(),
     questionIndex: 0,
     responses: [],
-    followUpPending: false
+    followUpPending: false,
+    followUpFor: null
   };
   sessions.set(id, session);
   return { session, data };
@@ -135,21 +169,87 @@ function normalizeRating(input, question) {
   return value;
 }
 
+function tokenize(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function retrieveContext(query) {
+  const tokens = new Set(tokenize(query));
+  if (!tokens.size) {
+    return [];
+  }
+  const scored = knowledgeBase
+    .map((doc) => {
+      const score = doc.tags.reduce(
+        (sum, tag) => (tokens.has(tag) ? sum + 1 : sum),
+        0
+      );
+      return { ...doc, score };
+    })
+    .filter((doc) => doc.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2);
+
+  return scored.map((doc) => doc.text);
+}
+
 function handleMessage(session, message, data) {
   const question = getQuestionForSession(session, data);
   if (!question) {
     return {
       message:
         "We already wrapped up the survey. If you’d like to add more feedback, just share it now.",
-      done: true
+      done: true,
+      ragContext: []
     };
   }
 
   const trimmed = String(message || "").trim();
   if (!trimmed) {
+    if (session.followUpPending) {
+      return {
+        message: "Could you share a quick detail for the follow-up?",
+        quickReplies: [],
+        ragContext: []
+      };
+    }
     return {
       message: "Could you share a response so I can keep going?",
-      quickReplies: buildQuickReplies(question)
+      quickReplies: buildQuickReplies(question),
+      ragContext: []
+    };
+  }
+
+  if (session.followUpPending) {
+    session.responses.push({
+      id: `${session.followUpFor}-followup`,
+      type: "followup",
+      value: trimmed,
+      parentId: session.followUpFor
+    });
+    session.followUpPending = false;
+    session.followUpFor = null;
+    session.questionIndex += 1;
+
+    const nextQuestion = getQuestionForSession(session, data);
+    const ragContext = retrieveContext(trimmed);
+    if (!nextQuestion) {
+      return {
+        message: buildSummary(session.responses),
+        done: true,
+        ragContext
+      };
+    }
+
+    return {
+      message: `${getRandom(encouragements)} ${nextQuestion.text}`,
+      quickReplies: buildQuickReplies(nextQuestion),
+      progress: buildProgress(session, data),
+      ragContext
     };
   }
 
@@ -158,7 +258,8 @@ function handleMessage(session, message, data) {
     if (rating === null) {
       return {
         message: `Please enter a number between ${question.min} and ${question.max}.`,
-        quickReplies: buildQuickReplies(question)
+        quickReplies: buildQuickReplies(question),
+        ragContext: []
       };
     }
 
@@ -177,13 +278,17 @@ function handleMessage(session, message, data) {
 
     if (!session.followUpPending) {
       session.followUpPending = true;
+      session.followUpFor = question.id;
+      const ragContext = retrieveContext(`${question.text} ${rating}`);
       return {
         message: `${getRandom(encouragements)} ${followUpMessage}`,
-        quickReplies: []
+        quickReplies: [],
+        ragContext
       };
     }
 
     session.followUpPending = false;
+    session.followUpFor = null;
     session.questionIndex += 1;
   } else if (question.type === "choice") {
     const normalized = trimmed.toLowerCase();
@@ -193,7 +298,8 @@ function handleMessage(session, message, data) {
     if (!selected) {
       return {
         message: `Please pick one of the options: ${question.options.join(", ")}.`,
-        quickReplies: buildQuickReplies(question)
+        quickReplies: buildQuickReplies(question),
+        ragContext: []
       };
     }
     session.responses.push({
@@ -212,17 +318,20 @@ function handleMessage(session, message, data) {
   }
 
   const nextQuestion = getQuestionForSession(session, data);
+  const ragContext = retrieveContext(`${question.text} ${trimmed}`);
   if (!nextQuestion) {
     return {
       message: buildSummary(session.responses),
-      done: true
+      done: true,
+      ragContext
     };
   }
 
   return {
     message: `${getRandom(encouragements)} ${nextQuestion.text}`,
     quickReplies: buildQuickReplies(nextQuestion),
-    progress: buildProgress(session, data)
+    progress: buildProgress(session, data),
+    ragContext
   };
 }
 

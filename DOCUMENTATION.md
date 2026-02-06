@@ -47,6 +47,7 @@ Response
 - quickReplies: suggested responses for the next question.
 - progress: updated progress (when available).
 - done: boolean indicating survey completion.
+- ragContext: array of retrieved knowledge snippets.
 
 ### GET /api/history/:sessionId
 Returns response history.
@@ -61,11 +62,18 @@ The UI in [public/app.js](public/app.js) manages:
 - Rendering bot/user bubbles.
 - Quick reply buttons.
 - Live insight cards based on response history.
+- Displaying RAG knowledge snippets in the insights panel.
 
 ## Engagement logic
 - Ratings are normalized and validated.
 - Each rating triggers one follow-up prompt to capture context.
 - Encouragement phrases are randomized to keep the tone fresh.
+
+## Simple RAG layer
+The server includes a small in-memory knowledge base and a keyword overlap retriever:
+- `knowledgeBase` stores short, tagged snippets.
+- `retrieveContext()` scores snippets based on tag matches.
+- The top matches are returned as `ragContext` in the response and surfaced in the UI.
 
 ## Extending the chatbot
 - Add or reorder questions in [server.js](server.js).

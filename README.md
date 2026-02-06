@@ -8,6 +8,7 @@ For full documentation, see [DOCUMENTATION.md](DOCUMENTATION.md).
 - Compressed questionnaire payload stored server-side and decompressed per session.
 - Response history endpoint powering live insights.
 - Adaptive follow-ups based on rating sentiment.
+- Simple RAG layer that surfaces relevant knowledge snippets.
 - Modern UI with quick replies and progress indicators.
 
 ## Architecture overview

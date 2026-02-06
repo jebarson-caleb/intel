@@ -7,6 +7,7 @@ const progressPercent = document.getElementById("progressPercent");
 const progressCount = document.getElementById("progressCount");
 
 let sessionId = null;
+let latestRag = [];
 
 function addBubble(text, sender) {
   const bubble = document.createElement("div");
@@ -38,7 +39,7 @@ function setProgress(progress) {
   progressCount.textContent = `${progress.answered}/${progress.total}`;
 }
 
-function renderInsights(responses) {
+function renderInsights(responses, ragContext = []) {
   if (!responses.length) {
     insightsContent.innerHTML =
       '<p class="placeholder">Start the survey to see insights.</p>';
@@ -73,6 +74,16 @@ function renderInsights(responses) {
   responseCard.innerHTML = `<strong>Total responses</strong>${responses.length}`;
 
   insightsContent.append(averageCard, highlightCard, improveCard, responseCard);
+
+  if (ragContext.length) {
+    const ragCard = document.createElement("div");
+    ragCard.className = "insight-card";
+    ragCard.innerHTML = `
+      <strong>Knowledge snippets</strong>
+      <ul>${ragContext.map((text) => `<li>${text}</li>`).join("")}</ul>
+    `;
+    insightsContent.append(ragCard);
+  }
 }
 
 async function fetchHistory() {
@@ -81,13 +92,14 @@ async function fetchHistory() {
   }
   const res = await fetch(`/api/history/${sessionId}`);
   const data = await res.json();
-  renderInsights(data.responses || []);
+  renderInsights(data.responses || [], latestRag);
 }
 
 async function startSession() {
   const res = await fetch("/api/start");
   const data = await res.json();
   sessionId = data.sessionId;
+  latestRag = [];
   addBubble(data.intro, "bot");
   addBubble(data.message, "bot");
   renderQuickReplies(data.quickReplies);
@@ -106,6 +118,7 @@ async function sendMessage(text) {
   });
   const data = await res.json();
   addBubble(data.message, "bot");
+  latestRag = data.ragContext || [];
   if (data.done) {
     renderQuickReplies([]);
   } else {
