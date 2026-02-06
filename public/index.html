@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Survey Chatbot</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Customer Insights</p>
+          <h1>Survey Chatbot</h1>
+          <p class="subtitle">
+            Adaptive survey flow powered by compressed questionnaires and session
+            history for a more engaging experience.
+          </p>
+        </div>
+        <div class="stats">
+          <div>
+            <span id="progressPercent">0%</span>
+            <small>Completed</small>
+          </div>
+          <div>
+            <span id="progressCount">0/0</span>
+            <small>Questions</small>
+          </div>
+        </div>
+      </header>
+
+      <main class="chat">
+        <div id="chatWindow" class="chat-window"></div>
+        <div id="quickReplies" class="quick-replies"></div>
+        <form id="chatForm" class="chat-form">
+          <input
+            id="chatInput"
+            type="text"
+            placeholder="Type your response…"
+            autocomplete="off"
+            required
+          />
+          <button type="submit">Send</button>
+        </form>
+      </main>
+
+      <aside class="insights">
+        <h2>Live Insights</h2>
+        <p class="insights-subtitle">
+          Response history updates as the conversation progresses.
+        </p>
+        <div id="insightsContent" class="insights-content">
+          <p class="placeholder">Start the survey to see insights.</p>
+        </div>
+      </aside>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

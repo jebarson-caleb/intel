@@ -1,0 +1,13 @@
+{
+  "name": "survey-chatbot",
+  "version": "1.0.0",
+  "description": "Survey chatbot using compressed questionnaire data and response history.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
